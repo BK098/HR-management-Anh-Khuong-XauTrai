@@ -16,18 +16,28 @@ namespace HR_management.Api.Controllers
             _authService = authService;
         }
 
-        //[HttpPost]
-        //public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
-        //{
-        //    var res = await _authService.Login(loginDto);
-        //    return Ok(res);
-        //}
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
+        {
+            var res = await _authService.Login(loginDto);
+            return Ok(res);
+        }
 
-        //[HttpPost]
-        //public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
-        //{
-        //    var res = await _authService.Register(registerDto);
-        //    return Ok(res);
-        //}
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
+        {
+            var res = await _authService.Register(registerDto);
+            return Ok(res);
+        }
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] TokenDto tokenDto)
+        {
+            var response = await _authService.RefreshToken(tokenDto);
+            if (response == null)
+            {
+                return Unauthorized();
+            }
+            return Ok(response);
+        }
     }
 }

@@ -7,6 +7,8 @@ namespace HR_management.Application.Services
     {
         Task<AuthenticatedResponse?> Login(LoginDto loginDto);
         Task<string> Register(RegisterDto registerDto);
+        Task<AuthenticatedResponse> RefreshToken(TokenDto tokenDto);
+
         //string GenerateAccessToken(IEnumerable<Claim> claims, DateTime expireAt);
         //string GenerateRefreshToken();
         //ClaimsPrincipal GetPrincipalFromExpiredToken(string token);

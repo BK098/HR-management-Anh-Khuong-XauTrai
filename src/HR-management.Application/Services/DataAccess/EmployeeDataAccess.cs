@@ -14,35 +14,35 @@ namespace HR_management.Application.Services.DataAccess
             _context = context;
         }
 
-        public async Task<Employee> CreateEmployeeAsync(Employee employee)
+        public async Task<Employee> CreateEmployeeAsync(Employee userDto)
         {
-            await _context.Employees.AddAsync(employee);
+            await _context.Users.AddAsync(userDto);
             await _context.SaveChangesAsync();
-            return employee;
+            return userDto;
         }
 
-        public bool DeleteEmployee(Employee employee)
+        public bool DeleteEmployee(Employee userDto)
         {
-            _context.Employees.Remove(employee);
+            _context.Users.Remove(userDto);
             _context.SaveChanges();
             return true;
         }
 
         public async Task<IEnumerable<Employee>> GetAllEmployeesAsync()
         {
-            return await _context.Employees.ToListAsync();
+            return await _context.Users.ToListAsync();
         }
 
         public async Task<Employee> GetEmployeeByIdAsync(Guid Id)
         {
-            return await _context.Employees.SingleOrDefaultAsync(e => e.Id == Id);
+            return await _context.Users.SingleOrDefaultAsync(e => e.Id == Id);
         }
 
-        public Employee UpdateEmployee(Employee employee)
+        public Employee UpdateEmployee(Employee userDto)
         {
-            _context.Employees.Update(employee);
+            _context.Users.Update(userDto);
             _context.SaveChanges();
-            return employee;
+            return userDto;
         }
     }
 }

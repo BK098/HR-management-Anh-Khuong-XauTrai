@@ -50,6 +50,11 @@ namespace HR_management.Application.Services.DataAccess
             throw new NotImplementedException();
         }
 
+        public Task<EmployeeTimekeeping> GetTimekeepingByEmployeeIdAndDateSpecific(Guid employeeId, DateTimeOffset Date)
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task<Timekeeping> GetTimekeepingByIdAsync(Guid Id)
         {
             return await _context.Timekeepings.SingleOrDefaultAsync(e => e.Id == Id);
@@ -62,9 +67,9 @@ namespace HR_management.Application.Services.DataAccess
             return employee;
         }
 
-        Task<Timekeeping> ITimekeepingDataAccess.GetTimekeepingByEmployeeIdAndDateSpecific(Guid employeeId, DateTimeOffset Date)
+        /*Task<Timekeeping> ITimekeepingDataAccess.GetTimekeepingByEmployeeIdAndDateSpecific(Guid employeeId, DateTimeOffset Date)
         {
             throw new NotImplementedException();
-        }
+        }*/
     }
 }

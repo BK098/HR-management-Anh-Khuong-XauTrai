@@ -2,6 +2,7 @@
 using HR_management.Application.Models.Auth;
 using HR_management.Application.Services.DataAccess.Interfaces;
 using HR_management.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -14,22 +15,26 @@ namespace HR_management.Application.Services.ServicesImp
     public class AuthService : IAuthService
     {
         private readonly IConfiguration _configuration;
-        private readonly IAuthDataAccess _authDataAccess;
         private readonly IMapper _mapper;
-        public AuthService(IConfiguration configuration, IAuthDataAccess authDataAccess, IMapper mapper)
+        private readonly UserManager<Employee> _userManager;
+        private readonly SignInManager<Employee> _signInManager;
+        private readonly IDepartmentDataAccess _departmentDataAccess;
+        public AuthService(IConfiguration configuration, IMapper mapper, SignInManager<Employee> signInManager, UserManager<Employee> userManager, IDepartmentDataAccess departmentDataAccess)
         {
             _configuration = configuration;
-            _authDataAccess = authDataAccess;
             _mapper = mapper;
+            _signInManager = signInManager;
+            _userManager = userManager;
+            _departmentDataAccess = departmentDataAccess;
         }
-        protected string GenerateAccessToken(IEnumerable<Claim> claims, DateTime expireAt)
+        protected string GenerateAccessToken(IEnumerable<Claim> claims)
         {
             var secretKey = Encoding.ASCII.GetBytes(_configuration.GetValue<string>("SecretKey"));
 
             var jwt = new JwtSecurityToken(
                 claims: claims,
                 notBefore: DateTime.UtcNow,
-                expires: expireAt,
+                expires: DateTime.UtcNow.AddMinutes(5).ToUniversalTime(),
                 signingCredentials: new SigningCredentials(
                     new SymmetricSecurityKey(secretKey),
                     SecurityAlgorithms.HmacSha256));
@@ -70,21 +75,32 @@ namespace HR_management.Application.Services.ServicesImp
         {
             try
             {
-                var hasEmployee = await _authDataAccess.Login(loginDto);
-                if (hasEmployee is null)
+                var user = await _userManager.FindByNameAsync(loginDto.Gmail);
+                if (user is null)
+                {
                     return null;
+                }
+                var result = await _userManager.CheckPasswordAsync(user, loginDto.Password);
+                if (!result)
+                {
+                    return null;
+                }
 
+                var role = await _signInManager.UserManager.GetRolesAsync(user);
 
                 var claims = new List<Claim>
                 {
-                    new Claim(ClaimTypes.Name, loginDto.Username),
-                    new Claim(ClaimTypes.Role, "Manager")
+                    new Claim(ClaimTypes.Name, user.Name),
+                    new Claim(ClaimTypes.Role, role.ToString())
                 };
-                var accessToken = "";
-                //GenerateAccessToken(claims);
+
+                var accessToken = GenerateAccessToken(claims);
                 var refreshToken = GenerateRefreshToken();
-                //user.RefreshToken = refreshToken;
-                //user.RefreshTokenExpiryTime = DateTime.Now.AddDays(7);
+                //GenerateAccessToken(claims);
+                user.RefreshToken = refreshToken;
+                user.RefreshTokenExpiryTime = DateTime.Now.AddDays(7);
+
+                await _userManager.UpdateAsync(user);
                 //_userContext.SaveChanges();
                 return new AuthenticatedResponse
                 {
@@ -102,24 +118,62 @@ namespace HR_management.Application.Services.ServicesImp
         {
             try
             {
-                Employee employee = _mapper.Map<Employee>(registerDto);
-                Employee createdEmployee = await _authDataAccess.Register(employee);
-                if (createdEmployee != null)
+                var isGmailExisted = await _userManager.FindByEmailAsync(registerDto.Email);
+                if (isGmailExisted is not null)
                 {
-                    var accessToken = "";
-                    //GenerateAccessToken(claims);
-                    var refreshToken = GenerateRefreshToken();
-                    //user.RefreshToken = refreshToken;
-                    //user.RefreshTokenExpiryTime = DateTime.Now.AddDays(7);
-                    //_userContext.SaveChanges();
+                    return "Tài khoản đã tồn tại";
+                }
+
+                var user = _mapper.Map<Employee>(registerDto);
+                user.UserName = registerDto.Email;
+
+                var result = await _userManager.CreateAsync(user, registerDto.Password);
+                if (result.Succeeded)
+                {
+                    var roleName = await _departmentDataAccess.GetDepartmentByIdAsync(registerDto.DepartmentID);
+                    await _signInManager.UserManager.AddToRoleAsync(user, roleName.Name);
+                    //var roles = await
+                    await _signInManager.SignInAsync(user, isPersistent: false);
                     return "Created success account";
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                throw;
+                throw new NullReferenceException(ex.ToString());
             }
             return "Created failure account!";
+        }
+        public async Task<AuthenticatedResponse> RefreshToken(TokenDto tokenDto)
+        {
+            try
+            {
+                var principal = GetPrincipalFromExpiredToken(tokenDto.Token);
+                var user = await _userManager.FindByNameAsync(principal.Identity.Name);
+
+                if (user == null || user.RefreshToken != tokenDto.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.Now)
+                {
+                    return null;
+                }
+
+                var newAccessToken = GenerateAccessToken(principal.Claims);
+                var newRefreshToken = GenerateRefreshToken();
+
+                user.RefreshToken = newRefreshToken;
+                user.RefreshTokenExpiryTime = DateTime.Now.AddDays(7);
+
+                await _userManager.UpdateAsync(user);
+
+                return new AuthenticatedResponse
+                {
+                    Token = newAccessToken,
+                    RefreshToken = newRefreshToken
+                };
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
         }
     }
 }

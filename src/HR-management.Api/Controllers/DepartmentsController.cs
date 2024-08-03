@@ -1,5 +1,6 @@
 ﻿using HR_management.Application.Models.Department;
 using HR_management.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -43,8 +44,8 @@ namespace HR_management.Api.Controllers
             var res = await employeeService.GetDepartmentById(id);
             return Ok(res);
         }
-
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> GetAllDepartment()
         {
             var res = await employeeService.GetAllDepartments();
